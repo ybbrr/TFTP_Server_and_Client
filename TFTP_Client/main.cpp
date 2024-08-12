@@ -22,7 +22,7 @@ int main()
         return 1;
     }
 
-    std::string file_name = "the_file_name_you_want_to_send_or_pull.txt";
+    std::string file_name = "name_of_the_file_you_want_to_send_or_pull.txt";
     std::string directory = R"(the\directory\for\you\to\send\the\file\or\save\the\file\)";
 
     // If you want to send a file to Server use below.
