@@ -62,10 +62,8 @@ namespace YB
 
         void close_socket_architecture() const;
 
-        std::unique_ptr<YB::TFTP> m_tftp;
-
-        std::vector<char> m_incoming_buffer;
-        std::vector<char> m_outgoing_buffer;
+        std::unique_ptr<char[]> m_incoming_buffer;
+        std::unique_ptr<char[]> m_outgoing_buffer;
 
         SOCKET m_client_socket;
         SOCKADDR_IN m_server_info;

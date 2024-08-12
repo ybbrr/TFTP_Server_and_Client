@@ -32,43 +32,43 @@ namespace YB
      * Special Members
      **************************************************************************/
 
-        virtual ~TFTP() noexcept = default;
+        TFTP() noexcept = delete;
 
-        TFTP(TFTP &&) noexcept = default;
+        virtual ~TFTP() noexcept = delete;
 
-        TFTP &operator=(TFTP &&) noexcept = default;
+        TFTP(TFTP &&) noexcept = delete;
 
-        TFTP(const TFTP &) noexcept = default;
+        TFTP &operator=(TFTP &&) noexcept = delete;
 
-        TFTP &operator=(TFTP const &) noexcept = default;
+        TFTP(const TFTP &) noexcept = delete;
+
+        TFTP &operator=(TFTP const &) noexcept = delete;
 
     /***************************************************************************
      * Public Members
      **************************************************************************/
 
-        TFTP();
+        static packet_t make_rrq_packet(const std::string& file_name);
 
-        std::vector<char> make_rrq_packet(const std::string& file_name);
+        static packet_t make_wrq_packet(const std::string& file_name);
 
-        std::vector<char> make_wrq_packet(const std::string& file_name);
+        static packet_t make_data_packet(const char* data_block);
 
-        std::vector<char> make_data_packet(const char* data_block);
+        static packet_t make_ack_packet();
 
-        std::vector<char> make_ack_packet();
+        static packet_t make_error_packet();
 
-        std::vector<char> make_error_packet();
+        static void reset_ack_data_block_num();
 
-        void reset_ack_data_block_num();
-
-        void reset_data_block_num();
+        static void reset_data_block_num();
 
     /***************************************************************************
      * Private Members
      **************************************************************************/
     private:
 
-        size_t m_data_block_num; // use only for makeDataPacket
-        size_t m_ack_data_block_num; // use only for makeACKPacket
+        static int m_data_block_num;
+        static int m_ack_block_num;
 
     /***************************************************************************
      * Protected Members

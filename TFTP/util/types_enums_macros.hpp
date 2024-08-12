@@ -36,6 +36,13 @@ namespace YB
 #define BLOCK_NUMBER_BYTE_SIZE 2
 #define DATA_BEGIN (OP_CODE_BYTE_SIZE + BLOCK_NUMBER_BYTE_SIZE)
 
+    typedef struct packet_s
+    {
+        std::unique_ptr<char[]> data_ptr;
+        int size;
+        int data_block_number;
+    } packet_t;
+
 } // YB
 
 #endif //TFTP_SEVER_AND_CLIENT_TYPES_ENUMS_MACROS_HPP

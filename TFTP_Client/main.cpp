@@ -7,7 +7,6 @@
  * @copyright (c) 2024 All rights reserved.
  */
 
-#include <iostream>
 #include <tftp.hpp>
 #include "tftp_client.hpp"
 
@@ -23,7 +22,14 @@ int main()
         return 1;
     }
 
-    client->send_data(R"(C:\Users\Kp\Desktop\deneme.txt)");
+    std::string file_name = "the_file_name_you_want_to_send_or_pull.txt";
+    std::string directory = R"(the\directory\for\you\to\send\the\file\or\save\the\file\)";
+
+    // If you want to send a file to Server use below.
+    client->send_data(directory + file_name);
+
+    // If you want to pull a file from Server use below.
+    // client->receive_data(directory + file_name);
 
     return 0;
 }

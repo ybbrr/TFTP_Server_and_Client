@@ -26,9 +26,8 @@ namespace YB
  ******************************************************************************/
 
     TFTPClient::TFTPClient()
-        : m_tftp{new TFTP()},
-          m_incoming_buffer(TFTP_INCOMING_DATA_BUFFER_LEN, 0),
-          m_outgoing_buffer(TFTP_OUTGOING_DATA_BUFFER_LEN, 0),
+        : m_incoming_buffer(new char[TFTP_INCOMING_DATA_BUFFER_LEN]),
+          m_outgoing_buffer(new char[TFTP_OUTGOING_DATA_BUFFER_LEN]),
           m_client_socket{},
           m_server_info{},
           m_addr_size{}
@@ -106,12 +105,12 @@ namespace YB
         int len = sizeof(peer_addr);
 
         //send WRQ//
-        std::vector<char> wrq_packet
-            = this->m_tftp->make_wrq_packet(file_name);
+        packet_t wrq_packet
+            = YB::TFTP::make_wrq_packet(file_name);
 
         sendto(this->m_client_socket,
-               wrq_packet.data(),
-               static_cast<int>(wrq_packet.size()),
+               wrq_packet.data_ptr.get(),
+               static_cast<int>(wrq_packet.size),
                0,
                (SOCKADDR*)&this->m_server_info,
                sizeof(SOCKADDR));
@@ -119,7 +118,7 @@ namespace YB
 
         //first ACK
         recvfrom(this->m_client_socket,
-                 this->m_incoming_buffer.data(),
+                 this->m_incoming_buffer.get(),
                  TFTP_INCOMING_DATA_BUFFER_LEN,
                  0,
                  (SOCKADDR*)&peer_addr,
@@ -142,24 +141,24 @@ namespace YB
 
         while (!file.eof())
         {
-            memset(this->m_outgoing_buffer.data(), 0, TFTP_OUTGOING_DATA_BUFFER_LEN);
-            file.read(this->m_outgoing_buffer.data(), TFTP_OUTGOING_DATA_BUFFER_LEN);
+            memset(this->m_outgoing_buffer.get(), 0, TFTP_OUTGOING_DATA_BUFFER_LEN);
+            file.read(this->m_outgoing_buffer.get(), TFTP_OUTGOING_DATA_BUFFER_LEN);
             int number_of_bytes_from_last_read = static_cast<int>(file.gcount());
 
-            std::vector<char> data_packet
-                = this->m_tftp->make_data_packet(this->m_outgoing_buffer.data());
+            packet_t data_packet
+                = YB::TFTP::make_data_packet(this->m_outgoing_buffer.get());
 
             sendto(this->m_client_socket,
-                   data_packet.data(),
+                   data_packet.data_ptr.get(),
                    number_of_bytes_from_last_read + DATA_BEGIN,
                    0,
                    (SOCKADDR *) &peer_addr,
                    sizeof(SOCKADDR_IN));
 
-            memset(this->m_incoming_buffer.data(), 0, TFTP_INCOMING_DATA_BUFFER_LEN);
+            memset(this->m_incoming_buffer.get(), 0, TFTP_INCOMING_DATA_BUFFER_LEN);
 
             recvfrom(this->m_client_socket,
-                     this->m_incoming_buffer.data(),
+                     this->m_incoming_buffer.get(),
                      TFTP_INCOMING_DATA_BUFFER_LEN,
                      0,
                      (SOCKADDR *) &peer_addr,
@@ -167,7 +166,8 @@ namespace YB
 
             if (this->m_incoming_buffer[1] == OP_CODE_ACK)
             {
-                std::cout << "ACK accepted" << "\n";
+                std::cout << "ACK accepted. Data packet block_number: "
+                          << data_packet.data_block_number << "\n";
             }
             else
             {
@@ -203,12 +203,12 @@ namespace YB
         std::ofstream file(file_path, std::ios::binary);
 
         //send RRQ//
-        std::vector<char> wrq_packet
-            = this->m_tftp->make_rrq_packet(file_name);
+        packet_t wrq_packet
+            = YB::TFTP::make_rrq_packet(file_name);
 
         sendto(this->m_client_socket,
-               wrq_packet.data(),
-               wrq_packet.size(),
+               wrq_packet.data_ptr.get(),
+               static_cast<int>(wrq_packet.size),
                0,
                (SOCKADDR*)& this->m_server_info,
                this->m_addr_size);
@@ -219,7 +219,7 @@ namespace YB
 
         //Get first data block//
         int bytes = recvfrom(this->m_client_socket,
-                             this->m_incoming_buffer.data(),
+                             this->m_incoming_buffer.get(),
                              TFTP_INCOMING_DATA_BUFFER_LEN,
                              0,
                              (SOCKADDR*)&server,
@@ -240,20 +240,20 @@ namespace YB
         file.write(&this->m_incoming_buffer[DATA_BEGIN], bytes - DATA_BEGIN);
 
         //Get first data block//
-        std::vector<char> ack_packet = this->m_tftp->make_ack_packet();
+        packet_t ack_packet = YB::TFTP::make_ack_packet();
 
         sendto(this->m_client_socket,
-               ack_packet.data(),
-               static_cast<int>(ack_packet.size()),
+               ack_packet.data_ptr.get(),
+               static_cast<int>(ack_packet.size),
                0,
                (SOCKADDR*)&server, len);
 
         while (bytes >= TFTP_OUTGOING_DATA_BUFFER_LEN)
         {
-            memset(this->m_incoming_buffer.data(), 0, TFTP_OUTGOING_DATA_BUFFER_LEN);
+            memset(this->m_incoming_buffer.get(), 0, TFTP_OUTGOING_DATA_BUFFER_LEN);
 
             bytes = recvfrom(this->m_client_socket,
-                             this->m_incoming_buffer.data(),
+                             this->m_incoming_buffer.get(),
                              TFTP_INCOMING_DATA_BUFFER_LEN,
                              0,
                              (SOCKADDR*)&server,
@@ -261,12 +261,12 @@ namespace YB
 
             file.write(&this->m_incoming_buffer[DATA_BEGIN], bytes - DATA_BEGIN);
 
-            ack_packet.clear();
-            ack_packet = this->m_tftp->make_ack_packet();
+            //ack_packet.clear();
+            ack_packet = YB::TFTP::make_ack_packet();
 
             sendto(this->m_client_socket,
-                   ack_packet.data(),
-                   static_cast<int>(ack_packet.size()),
+                   ack_packet.data_ptr.get(),
+                   static_cast<int>(ack_packet.size),
                    0,
                    (SOCKADDR*)&server,
                    len);

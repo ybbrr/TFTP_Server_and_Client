@@ -30,6 +30,7 @@ int main()
         return 1;
     }
 
+    // Server always awake with its file transfer directory
     server->wait_for_a_request(R"(D:\ABC)");
 
     return 0;

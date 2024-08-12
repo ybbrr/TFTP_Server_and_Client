@@ -33,98 +33,113 @@ namespace YB
         uint16_t data_block;
     } TFTP_data_block_t;
 
+    int TFTP::m_data_block_num = 1U;
+    int TFTP::m_ack_block_num = 1U;
+
 /*******************************************************************************
  * Public Functions
  ******************************************************************************/
 
-    TFTP::TFTP()
-        : m_data_block_num{1U},
-          m_ack_data_block_num{1U}
-    {
-    }
-
-    std::vector<char> TFTP::make_rrq_packet(const std::string& file_name)
+    packet_t TFTP::make_rrq_packet(const std::string& file_name)
     {
         TFTP_header_t header{};
         header.op_code = htons(OP_CODE_RRQ);
-        size_t file_name_len = file_name.length() + 1;
-        size_t header_size = sizeof(header);
-        size_t data_len = header_size + file_name_len + 5 + 1;
-        std::vector<char> rrq(data_len, 0U);
-        std::memcpy(rrq.data(), &header, header_size);
-        std::memcpy(rrq.data() + header_size, file_name.c_str(), file_name_len);
-        std::memcpy(rrq.data() + header_size + file_name_len, "octet", 6);
+        int file_name_len = file_name.length() + 1;
+        int header_size = sizeof(header);
+        int data_len = header_size + file_name_len + 5 + 1;
+        packet_t rrq;
+        rrq.data_ptr = std::make_unique<char[]>(data_len);
+        rrq.size = data_len;
+        rrq.data_block_number = -1;
+        memcpy(rrq.data_ptr.get(), &header, header_size);
+        memcpy(rrq.data_ptr.get() + header_size, file_name.c_str(), file_name_len);
+        memcpy(rrq.data_ptr.get() + header_size + file_name_len, "octet", 6);
         return rrq;
     }
 
-    std::vector<char> TFTP::make_wrq_packet(const std::string& file_name)
+    packet_t TFTP::make_wrq_packet(const std::string& file_name)
     {
         TFTP_header_t header{};
         header.op_code = htons(OP_CODE_WRQ);
-        size_t file_name_len = file_name.length() + 1;
-        size_t header_size = sizeof(header);
-        size_t data_len = header_size + file_name_len + 5 + 1;
-        std::vector<char> wrq(data_len, 0U);
-        std::memcpy(wrq.data(), &header, header_size);
-        std::memcpy(wrq.data() + header_size, file_name.c_str(), file_name_len);
-        std::memcpy(wrq.data() + header_size + file_name_len, "octet", 6);
+        int file_name_len = file_name.length() + 1;
+        int header_size = sizeof(header);
+        int data_len = header_size + file_name_len + 5 + 1;
+        packet_t wrq;
+        wrq.data_ptr = std::make_unique<char[]>(data_len);
+        wrq.size = data_len;
+        wrq.data_block_number = -1;
+        memcpy(wrq.data_ptr.get(), &header, header_size);
+        memcpy(wrq.data_ptr.get() + header_size, file_name.c_str(), file_name_len);
+        memcpy(wrq.data_ptr.get() + header_size + file_name_len, "octet", 6);
         return wrq;
     }
 
-    std::vector<char> TFTP::make_data_packet(const char* data_block)
+    packet_t TFTP::make_data_packet(const char* data_block)
     {
         TFTP_header_t header{};
         header.op_code = htons(OP_CODE_DATA);
         TFTP_data_block_t block{};
-        block.data_block = htons(this->m_data_block_num++);
-        size_t header_size = sizeof(header);
-        size_t block_size = sizeof(block);
-        size_t data_len = header_size + block_size + TFTP_OUTGOING_DATA_BUFFER_LEN;
-        std::vector<char> data_packet(data_len, 0U);
-        std::memcpy(data_packet.data(), &header, sizeof(header));
-        std::memcpy(data_packet.data() + header_size, &block, block_size);
-        std::memcpy(data_packet.data() + header_size + block_size, data_block, TFTP_OUTGOING_DATA_BUFFER_LEN);
+        block.data_block = htons(m_data_block_num);
+        int header_size = sizeof(header);
+        int block_size = sizeof(block);
+        int data_len = header_size + block_size + TFTP_OUTGOING_DATA_BUFFER_LEN;
+        packet_t data_packet;
+        data_packet.data_ptr = std::make_unique<char[]>(data_len);
+        data_packet.size = data_len;
+        data_packet.data_block_number = m_data_block_num++;
+        memcpy(data_packet.data_ptr.get(), &header, sizeof(header));
+        memcpy(data_packet.data_ptr.get() + header_size, &block, block_size);
+        memcpy(data_packet.data_ptr.get() + header_size + block_size, data_block, TFTP_OUTGOING_DATA_BUFFER_LEN);
         return data_packet;
     }
 
-    std::vector<char> TFTP::make_ack_packet()
+    packet_t TFTP::make_ack_packet()
     {
         TFTP_header_t header{};
         header.op_code = htons(OP_CODE_ACK);
         TFTP_data_block_t block{};
-        block.data_block = htons(this->m_ack_data_block_num++);
-        size_t header_size = sizeof(header);
-        size_t block_size = sizeof(block);
-        size_t data_len = header_size + block_size + 1;
-        std::vector<char> ack_packet(data_len, 0U);
-        std::memcpy(ack_packet.data(), &header, header_size);
-        std::memcpy(ack_packet.data() + header_size, &block, block_size + 1);
+        block.data_block = htons(m_ack_block_num);
+        int header_size = sizeof(header);
+        int block_size = sizeof(block);
+        int data_len = header_size + block_size + 1;
+        packet_t ack_packet;
+        ack_packet.data_ptr = std::make_unique<char[]>(data_len);
+        ack_packet.size = data_len;
+        ack_packet.data_block_number = m_ack_block_num++;
+        memcpy(ack_packet.data_ptr.get(), &header, header_size);
+        memcpy(ack_packet.data_ptr.get() + header_size, &block, block_size + 1);
         return ack_packet;
     }
 
-    std::vector<char> TFTP::make_error_packet()
+    packet_t TFTP::make_error_packet()
     {
+        std::string err_msg = "Something went wrong between server and client.";
+
         TFTP_header_t header{};
         header.op_code = htons(OP_CODE_ERR);
         TFTP_data_block_t block{};
-        block.data_block = htons(this->m_ack_data_block_num++);
-        std::vector<char> error_packet(sizeof(header) + sizeof(block), 0U);
-        std::memcpy(error_packet.data(), &header, sizeof(header));
-        std::memcpy(error_packet.data() + sizeof(header), &block, sizeof(block));
-
-        std::string err_msg = "Something went wrong between server and client.";
-        std::memcpy(error_packet.data() + sizeof(header) + sizeof(block), err_msg.c_str(), err_msg.length() + 2);
+        block.data_block = htons(m_ack_block_num);
+        int header_size = sizeof(header);
+        int block_size = sizeof(block);
+        int data_len = header_size + block_size + err_msg.length() + 1;
+        packet_t error_packet;
+        error_packet.data_ptr = std::make_unique<char[]>(data_len);
+        error_packet.size = data_len;
+        error_packet.data_block_number = m_ack_block_num++;
+        memcpy(error_packet.data_ptr.get(), &header, header_size);
+        memcpy(error_packet.data_ptr.get() + header_size, &block, block_size);
+        memcpy(error_packet.data_ptr.get() + header_size + block_size, err_msg.c_str(), err_msg.length());
         return error_packet;
     }
 
     void TFTP::reset_ack_data_block_num()
     {
-        this->m_ack_data_block_num = 1U;
+        m_ack_block_num = 1U;
     }
 
     void TFTP::reset_data_block_num()
     {
-        this->m_data_block_num = 1U;
+        m_data_block_num = 1U;
     }
 
 /*******************************************************************************
