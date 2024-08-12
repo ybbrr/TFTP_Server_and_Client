@@ -2,6 +2,10 @@
 
 Fully functional, high performance TFTP Server and Client applications.
 
+## How to Compile
+
+Run `build.bat`
+
 ## Examples
 
 ### Client Side Usage
