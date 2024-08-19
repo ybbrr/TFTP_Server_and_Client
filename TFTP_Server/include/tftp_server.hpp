@@ -1,27 +1,25 @@
-/**
- * @file tftp_server.hpp
- * @author Yasin BASAR
- * @brief
- * @version 1.0.0
- * @date 11/08/2024
- * @copyright (c) 2024 All rights reserved.
- */
+///
+/// @file tftp_server.hpp
+/// @author Yasin BASAR
+/// @brief
+/// @version 1.0.0
+/// @date 11/08/2024
+/// @copyright (c) 2024 All rights reserved.
+///
 
 #ifndef TFTP_SEVER_AND_CLIENT_TFTP_SERVER_HPP
 #define TFTP_SEVER_AND_CLIENT_TFTP_SERVER_HPP
 
-/*******************************************************************************
- * Includes
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Project Includes
+////////////////////////////////////////////////////////////////////////////////
 
 #include <WinSock2.h>
-#include <iostream>
-#include <fstream>
 #include <string>
 
-/*******************************************************************************
- * Third Party Libraries
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Third Party Includes
+////////////////////////////////////////////////////////////////////////////////
 
 #include <tftp.hpp>
 
@@ -31,21 +29,18 @@ namespace YB
     class TFTPServer
     {
     public:
-    /***************************************************************************
-     * Special Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Special Members
+    ////////////////////////////////////////////////////////////////////////////
 
         TFTPServer(TFTPServer &&) noexcept = default;
-
         TFTPServer &operator=(TFTPServer &&) noexcept = default;
+        TFTPServer(const TFTPServer &) noexcept = delete;
+        TFTPServer &operator=(TFTPServer const &) noexcept = delete;
 
-        TFTPServer(const TFTPServer &) noexcept = default;
-
-        TFTPServer &operator=(TFTPServer const &) noexcept = default;
-
-    /***************************************************************************
-     * Public Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Public Members
+    ////////////////////////////////////////////////////////////////////////////
 
         TFTPServer();
         ~TFTPServer();
@@ -53,10 +48,16 @@ namespace YB
         bool bind_socket();
         void wait_for_a_request(const std::string& save_directory);
 
-    /***************************************************************************
-     * Private Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Private Members
+    ////////////////////////////////////////////////////////////////////////////
     private:
+
+        void send_ack_packet();
+
+        void send_data_packet(int number_of_bytes_from_last_read);
+
+        int receive_data_from_client();
 
         void close_socket_architecture() const;
 
@@ -69,12 +70,12 @@ namespace YB
 
         int m_addr_size;
 
-    /***************************************************************************
-     * Protected Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Protected Members
+    ////////////////////////////////////////////////////////////////////////////
     protected:
 
-        /* Data */
+        // Data
 
     };
 
