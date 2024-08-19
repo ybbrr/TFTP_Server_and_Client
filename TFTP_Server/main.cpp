@@ -12,23 +12,10 @@
 
 int main()
 {
-    std::unique_ptr<YB::TFTPServer> server{new YB::TFTPServer()};
+    const std::unique_ptr<YB::TFTPServer> server{new YB::TFTPServer()};
 
-    bool status = server->create_socket();
-
-    if (!status)
-    {
-        server.reset(server.get());
-        return 1;
-    }
-
-    status = server->bind_socket();
-
-    if (!status)
-    {
-        server.reset(server.get());
-        return 1;
-    }
+    server->create_socket();
+    server->bind_socket();
 
     // Server always awake with its file transfer directory
     server->wait_for_a_request(R"(D:\ABC)");

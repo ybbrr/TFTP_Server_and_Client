@@ -25,7 +25,6 @@
 
 namespace YB
 {
-
     class TFTPServer
     {
     public:
@@ -44,8 +43,8 @@ namespace YB
 
         TFTPServer();
         ~TFTPServer();
-        bool create_socket();
-        bool bind_socket();
+        void create_socket();
+        void bind_socket();
         void wait_for_a_request(const std::string& save_directory);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -68,7 +67,7 @@ namespace YB
         SOCKADDR_IN m_server_info;
         SOCKADDR_STORAGE_LH m_server_storage;
 
-        int m_addr_size;
+        int m_addr_storage_size;
 
     ////////////////////////////////////////////////////////////////////////////
     // Protected Members

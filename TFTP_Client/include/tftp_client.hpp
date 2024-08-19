@@ -1,64 +1,68 @@
-/**
- * @file tftp_client.hpp
- * @author Yasin BASAR
- * @brief
- * @version 1.0.0
- * @date 11/08/2024
- * @copyright (c) 2024 All rights reserved.
- */
+///
+/// @file tftp_client.hpp
+/// @author Yasin BASAR
+/// @brief
+/// @version 1.0.0
+/// @date 11/08/2024
+/// @copyright (c) 2024 All rights reserved.
+///
 
 #ifndef TFTP_SEVER_AND_CLIENT_TFTP_CLIENT_HPP
 #define TFTP_SEVER_AND_CLIENT_TFTP_CLIENT_HPP
 
-/*******************************************************************************
- * Includes
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Project Includes
+////////////////////////////////////////////////////////////////////////////////
 
 #include <WinSock2.h>
-#include <iostream>
-#include <fstream>
 #include <string>
 
-/*******************************************************************************
- * Third Party Libraries
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Third Party Includes
+////////////////////////////////////////////////////////////////////////////////
 
 #include <tftp.hpp>
 
 namespace YB
 {
-
     class TFTPClient
     {
     public:
-    /***************************************************************************
-     * Special Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Special Members
+    ////////////////////////////////////////////////////////////////////////////
 
         TFTPClient(TFTPClient &&) noexcept = default;
-
         TFTPClient &operator=(TFTPClient &&) noexcept = default;
+        TFTPClient(const TFTPClient &) noexcept = delete;
+        TFTPClient &operator=(TFTPClient const &) noexcept = delete;
 
-        TFTPClient(const TFTPClient &) noexcept = default;
-
-        TFTPClient &operator=(TFTPClient const &) noexcept = default;
-
-    /***************************************************************************
-     * Public Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Public Members
+    ////////////////////////////////////////////////////////////////////////////
 
         TFTPClient();
         ~TFTPClient();
-        bool create_socket();
-        void send_data(const std::string& file_path);
-        void receive_data(const std::string& file_path);
+        void create_socket();
+        void send_file(const std::string& file_path);
+        void receive_file(const std::string& file_path);
 
-    /***************************************************************************
-     * Private Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Private Members
+    ////////////////////////////////////////////////////////////////////////////
     private:
 
-        void send_transmission_done_signal(const SOCKADDR* peer_addr);
+        void send_ack_packet();
+
+        void send_data_packet(int number_of_bytes_from_last_read);
+
+        void send_rrq_packet(const std::string& file_name);
+
+        void send_wrq_packet(const std::string& file_name);
+
+        int receive_data_from_server();
+
+        void send_transmission_done_signal();
 
         void close_socket_architecture() const;
 
@@ -67,15 +71,16 @@ namespace YB
 
         SOCKET m_client_socket;
         SOCKADDR_IN m_server_info;
+        SOCKADDR_IN m_peer;
 
         int m_addr_size;
 
-    /***************************************************************************
-     * Protected Members
-     **************************************************************************/
+    ////////////////////////////////////////////////////////////////////////////
+    // Protected Members
+    ////////////////////////////////////////////////////////////////////////////
     protected:
 
-        /* Data */
+        // Data
 
     };
 

@@ -7,15 +7,14 @@
 /// @copyright (c) 2024 All rights reserved.
 ///
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Project Includes
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tftp_server.hpp"
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <filesystem>
+#include "tftp_server.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Third Party Includes
@@ -30,74 +29,70 @@ namespace YB
     TFTPServer::TFTPServer()
         : m_incoming_buffer(new char[TFTP_INCOMING_DATA_BUFFER_LEN]),
           m_outgoing_buffer(new char[TFTP_OUTGOING_DATA_BUFFER_LEN]),
-          m_server_socket{},
+          m_server_socket{INVALID_SOCKET},
           m_server_info{},
           m_server_storage{},
-          m_addr_size{}
+          m_addr_storage_size{sizeof(SOCKADDR_STORAGE_LH)}
     {
         WSADATA wsa_data{};
-        WORD version = MAKEWORD(2, 2);
-        int status = WSAStartup(version, &wsa_data);
+
+        constexpr WORD version = MAKEWORD(2, 2);
+        const int status = WSAStartup(version, &wsa_data);
+
         if (status != NO_ERROR)
         {
-            std::cout << "Error at Windows Socket Architecture initialization."
-                         "Error code: " << WSAGetLastError() << "\n";
-            std::cout << "Press any key to quit..." << std::endl;
-            system("pause");
-            exit(0);
+            const std::string error_str
+                = "Error at Windows Socket Architecture initialization. Error code: " +
+                  std::to_string(WSAGetLastError());
+
+            throw std::runtime_error(error_str);
         }
-        std::cout << "Windows Socket Architecture initialized." << "\n";
+
+        std::cout << "Windows Socket Architecture initialized.\n";
     }
 
     TFTPServer::~TFTPServer()
     {
-        if (this->m_server_socket != INVALID_SOCKET)
-        {
-            closesocket(this->m_server_socket);
-        }
-
         this->close_socket_architecture();
-        std::cout << "Windows Socket Architecture is closed." << std::endl;
     }
 
-    bool TFTPServer::create_socket()
+    void TFTPServer::create_socket()
     {
         this->m_server_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 
         if (this->m_server_socket == SOCKET_ERROR)
         {
-            std::cout << "Error at socket creating. Error code: " << WSAGetLastError() << std::endl;
+            const std::string error_str = "Error at socket creation. Error code: " +
+                                          std::to_string(WSAGetLastError());
             this->close_socket_architecture();
-            return false;
-        }
 
-        return true;
+            throw std::runtime_error(error_str);
+        }
     }
 
-    bool TFTPServer::bind_socket()
+    void TFTPServer::bind_socket()
     {
         this->m_server_info.sin_family = AF_INET;
         this->m_server_info.sin_port = htons(69);
         this->m_server_info.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
         std::memset(this->m_server_info.sin_zero, 0, sizeof(this->m_server_info.sin_zero));
 
-        int status = bind(this->m_server_socket,
-                          reinterpret_cast<SOCKADDR*>(&this->m_server_info),
-                          sizeof(this->m_server_info));
+        const int status = bind(this->m_server_socket,
+                                reinterpret_cast<SOCKADDR*>(&this->m_server_info),
+                                sizeof(this->m_server_info));
 
         if (status == SOCKET_ERROR)
         {
-            std::cout << "Error at binding. Error code: " << WSAGetLastError() << std::endl;
+            const std::string error_str = "Error at binding. Error code: " +
+                                          std::to_string(WSAGetLastError());
+
             this->close_socket_architecture();
-            return false;
+
+            throw std::runtime_error(error_str);
         }
-
-        this->m_addr_size = sizeof(this->m_server_storage);
-
-        return true;
     }
 
-    void TFTPServer::wait_for_a_request(const std::string &save_directory)
+    void TFTPServer::wait_for_a_request(const std::string& save_directory)
     {
         //Wait for Request//
         int bytes = this->receive_data_from_client();
@@ -107,7 +102,6 @@ namespace YB
             TFTP::reset_ack_data_block_num();
             TFTP::reset_data_block_num();
 
-            //Get WRQ//
             std::string file_path(&this->m_incoming_buffer[2]);
             std::replace(file_path.begin(), file_path.end(), '\\', '/');
             file_path = save_directory + "/" + file_path;
@@ -118,16 +112,12 @@ namespace YB
 
             std::ofstream out_file(file_path, std::ios::binary);
 
-            if (out_file.is_open())
+            if (!out_file.is_open())
             {
-                std::cout << "File is open" << std::endl;
-            }
-            else
-            {
-                std::cout << "File not found. Quitting" << std::endl;
                 this->close_socket_architecture();
                 out_file.close();
-                return;
+
+                throw std::runtime_error("File could not be created for WRQ");
             }
 
             this->send_ack_packet();
@@ -145,6 +135,7 @@ namespace YB
             while (bytes >= TFTP_OUTGOING_DATA_BUFFER_LEN);
 
             out_file.close();
+
             return;
         }
 
@@ -164,16 +155,12 @@ namespace YB
 
             std::ifstream in_file(file_path, std::ios::binary);
 
-            if (in_file.is_open())
+            if (!in_file.is_open())
             {
-                std::cout << "File is open" << std::endl;
-            }
-            else
-            {
-                std::cout << "File not found. Quitting" << std::endl;
                 this->close_socket_architecture();
                 in_file.close();
-                return;
+
+                throw std::runtime_error("File could not be found for RRQ");
             }
 
             memset(this->m_incoming_buffer.get(), 0, TFTP_OUTGOING_DATA_BUFFER_LEN);
@@ -192,24 +179,19 @@ namespace YB
 
                 (void)this->receive_data_from_client();
 
-                if (this->m_incoming_buffer[1] == OP_CODE_ACK)
+                if (this->m_incoming_buffer[1] != OP_CODE_ACK)
                 {
-                    std::cout << "ACK accepted.\n";
-                }
-                else
-                {
-                    std::cout << "Acknowledgement of data is missing."
-                              << "Something went wrong between server and client."
-                              << "Quitting." << std::endl;
                     this->close_socket_architecture();
-                    return;
+                    throw std::runtime_error("ACK Packet of data is missing");
                 }
             }
+
             in_file.close();
+
             return;
         }
 
-        std::cout << "There is no RRQ or WRQ accepted. Quitting." << std::endl;
+        std::cout << "There is no RRQ or WRQ accepted. Quitting.\n";
         this->close_socket_architecture();
     }
 
@@ -226,7 +208,7 @@ namespace YB
                      ack_packet.size,
                      0,
                      reinterpret_cast<SOCKADDR*>(&this->m_server_storage),
-                     this->m_addr_size);
+                     this->m_addr_storage_size);
     }
 
     void TFTPServer::send_data_packet(int number_of_bytes_from_last_read)
@@ -239,7 +221,7 @@ namespace YB
                      number_of_bytes_from_last_read + DATA_BEGIN,
                      0,
                      reinterpret_cast<SOCKADDR*>(&this->m_server_storage),
-                     this->m_addr_size);
+                     this->m_addr_storage_size);
     }
 
     int TFTPServer::receive_data_from_client()
@@ -249,7 +231,7 @@ namespace YB
                         TFTP_INCOMING_DATA_BUFFER_LEN,
                         0,
                         reinterpret_cast<SOCKADDR*>(&this->m_server_storage),
-                        &this->m_addr_size);
+                        &this->m_addr_storage_size);
     }
 
     void TFTPServer::close_socket_architecture() const

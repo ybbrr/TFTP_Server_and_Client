@@ -1,50 +1,54 @@
-/**
- * @file this->m_tftp_client.cpp
- * @author Yasin BASAR
- * @brief
- * @version 1.0.0
- * @date 11/08/2024
- * @copyright (c) 2024 All rights reserved.
- */
+///
+/// @file tftp_client.cpp
+/// @author Yasin BASAR
+/// @brief
+/// @version 1.0.0
+/// @date 11/08/2024
+/// @copyright (c) 2024 All rights reserved.
+///
 
 
-/*******************************************************************************
- * Includes 
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Project Includes
+////////////////////////////////////////////////////////////////////////////////
 
+#include <fstream>
+#include <iostream>
+#include <filesystem>
 #include "tftp_client.hpp"
 
-/*******************************************************************************
- * Third Party Libraries 
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Third Party Includes
+////////////////////////////////////////////////////////////////////////////////
 
 namespace YB
 {
-
-/*******************************************************************************
- * Public Functions
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Public Functions
+////////////////////////////////////////////////////////////////////////////////
 
     TFTPClient::TFTPClient()
         : m_incoming_buffer(new char[TFTP_INCOMING_DATA_BUFFER_LEN]),
           m_outgoing_buffer(new char[TFTP_OUTGOING_DATA_BUFFER_LEN]),
-          m_client_socket{},
+          m_client_socket{INVALID_SOCKET},
           m_server_info{},
-          m_addr_size{}
+          m_peer{},
+          m_addr_size{sizeof(SOCKADDR_IN)}
     {
         WSADATA wsa_data;
-        WORD version = MAKEWORD(2, 2);
-        int status = WSAStartup(version, &wsa_data);
+        constexpr WORD version = MAKEWORD(2, 2);
+        const int status = WSAStartup(version, &wsa_data);
 
         if (status != NO_ERROR)
         {
-            std::cout << "Error at Windows Socket Architecture initialization. Error code: " << WSAGetLastError() << "\n";
-            std::cout << "Press any key to quit..." << "\n";
-            system("pause");
-            exit(1);
+            const std::string error_str
+                = "Error at Windows Socket Architecture initialization. Error code: " +
+                  std::to_string(WSAGetLastError());
+
+            throw std::runtime_error(error_str);
         }
 
-        std::cout << "Windows Socket Architecture initialized." << std::endl;
+        std::cout << "Windows Socket Architecture initialized.\n";
     }
 
     TFTPClient::~TFTPClient()
@@ -52,91 +56,59 @@ namespace YB
         this->close_socket_architecture();
     }
 
-    bool TFTPClient::create_socket()
+    void TFTPClient::create_socket()
     {
         this->m_client_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 
-        if (this->m_client_socket == SOCKET_ERROR)
+        if (this->m_client_socket == SOCKET_ERROR ||
+            this->m_client_socket == INVALID_SOCKET)
         {
-            std::cout << "Error at socket creating. Error code: " << WSAGetLastError() << std::endl;
+            const std::string error_str = "Error at socket creation. Error code: " +
+                                          std::to_string(WSAGetLastError());
             this->close_socket_architecture();
-            return false;
+
+            throw std::runtime_error(error_str);
         }
 
         this->m_server_info.sin_family = AF_INET;
         this->m_server_info.sin_port = htons(69);
         this->m_server_info.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-        memset(this->m_server_info.sin_zero, 0, sizeof(this->m_server_info.sin_zero));
-
-        this->m_addr_size = sizeof(this->m_server_info);
-
-        return true;
+        memset(this->m_server_info.sin_zero, 0, this->m_addr_size);
     }
 
-    void TFTPClient::send_data(const std::string& file_path)
+    void TFTPClient::send_file(const std::string& file_path)
     {
-        size_t last_occurrence = file_path.find_last_of('/');
+        memset(&this->m_peer, 0, this->m_addr_size);
 
-        std::string file_name{};
+        std::string file_path_ = file_path;
+        std::replace(file_path_.begin(), file_path_.end(), '\\', '/');
 
-        if (last_occurrence != std::string::npos)
-        {
-            file_name = file_path.substr(last_occurrence + 1, file_path.length());
-        }
-        else
-        {
-            last_occurrence = file_path.find_last_of('\\');
+        const std::filesystem::path path(file_path_);
+        std::filesystem::path canonical_path = std::filesystem::weakly_canonical(path);
 
-            file_name = file_path.substr(last_occurrence + 1, file_path.length());
-        }
+        file_path_ = canonical_path.make_preferred().string();
+        const std::string file_name = canonical_path.filename().string();
 
-        std::ifstream file(file_path, std::ios::binary);
+        std::ifstream file(file_path_, std::ios::binary);
 
         if (!file.is_open())
         {
-            std::cout << "Directory not found" << "\n";
             this->close_socket_architecture();
             file.close();
-            return;
+            throw std::runtime_error("File could not be created for WRQ");
         }
 
-        SOCKADDR_IN peer_addr{};
-        memset(&peer_addr, 0, sizeof(peer_addr));
-        int len = sizeof(peer_addr);
-
-        //send WRQ//
-        packet_t wrq_packet
-            = YB::TFTP::make_wrq_packet(file_name);
-
-        sendto(this->m_client_socket,
-               wrq_packet.data_ptr.get(),
-               static_cast<int>(wrq_packet.size),
-               0,
-               (SOCKADDR*)&this->m_server_info,
-               sizeof(SOCKADDR));
-        //send WRQ//
+        //send WRQ
+        this->send_wrq_packet(file_name);
 
         //first ACK
-        recvfrom(this->m_client_socket,
-                 this->m_incoming_buffer.get(),
-                 TFTP_INCOMING_DATA_BUFFER_LEN,
-                 0,
-                 (SOCKADDR*)&peer_addr,
-                 &len);
+        this->receive_data_from_server();
 
-        if (this->m_incoming_buffer[1] == OP_CODE_ACK)
+        if (this->m_incoming_buffer[1] != OP_CODE_ACK)
         {
-            std::cout << "ACK accepted" << "\n";
-        }
-        else
-        {
-            std::cout << "Acknowledgement of data is missing."
-                      << "Something went wrong between server and client."
-                      << "Quitting." << std::endl;
-
-            this->send_transmission_done_signal((SOCKADDR*)&peer_addr);
-
-            return;
+            this->close_socket_architecture();
+            this->send_transmission_done_signal();
+            throw std::runtime_error("ACK Packet of data is missing");
         }
 
         while (!file.eof())
@@ -145,134 +117,132 @@ namespace YB
             file.read(this->m_outgoing_buffer.get(), TFTP_OUTGOING_DATA_BUFFER_LEN);
             int number_of_bytes_from_last_read = static_cast<int>(file.gcount());
 
-            packet_t data_packet
-                = YB::TFTP::make_data_packet(this->m_outgoing_buffer.get());
-
-            sendto(this->m_client_socket,
-                   data_packet.data_ptr.get(),
-                   number_of_bytes_from_last_read + DATA_BEGIN,
-                   0,
-                   (SOCKADDR *) &peer_addr,
-                   sizeof(SOCKADDR_IN));
+            this->send_data_packet(number_of_bytes_from_last_read);
 
             memset(this->m_incoming_buffer.get(), 0, TFTP_INCOMING_DATA_BUFFER_LEN);
 
-            recvfrom(this->m_client_socket,
-                     this->m_incoming_buffer.get(),
-                     TFTP_INCOMING_DATA_BUFFER_LEN,
-                     0,
-                     (SOCKADDR *) &peer_addr,
-                     &len);
+            this->receive_data_from_server();
 
-            if (this->m_incoming_buffer[1] == OP_CODE_ACK)
+            if (this->m_incoming_buffer[1] != OP_CODE_ACK)
             {
-                std::cout << "ACK accepted. Data packet block_number: "
-                          << data_packet.data_block_number << "\n";
-            }
-            else
-            {
-                std::cout << "Acknowledgement of data is missing."
-                          << "Something went wrong between server and client."
-                          << "Quitting." << std::endl;
-                
                 this->close_socket_architecture();
-                return;
+                this->send_transmission_done_signal();
+                throw std::runtime_error("ACK Packet of data is missing");
             }
         }
 
         file.close();
     }
 
-    void TFTPClient::receive_data(const std::string& file_path)
+    void TFTPClient::receive_file(const std::string& file_path)
     {
-        size_t last_occurrence = file_path.find_last_of('/');
+        memset(&this->m_peer, 0, this->m_addr_size);
 
-        std::string file_name{};
+        std::string file_path_ = file_path;
+        std::replace(file_path_.begin(), file_path_.end(), '\\', '/');
 
-        if (last_occurrence != std::string::npos)
-        {
-            file_name = file_path.substr(last_occurrence + 1, file_path.length());
-        }
-        else
-        {
-            last_occurrence = file_path.find_last_of('\\');
+        const std::filesystem::path path(file_path_);
+        std::filesystem::path canonical_path = std::filesystem::weakly_canonical(path);
 
-            file_name = file_path.substr(last_occurrence + 1, file_path.length());
-        }
+        file_path_ = canonical_path.make_preferred().string();
+        std::string file_name = canonical_path.filename().string();
 
-        std::ofstream file(file_path, std::ios::binary);
+        std::ofstream file(file_path_, std::ios::binary);
 
-        //send RRQ//
-        packet_t wrq_packet
-            = YB::TFTP::make_rrq_packet(file_name);
+        //send RRQ
+        this->send_rrq_packet(file_name);
 
-        sendto(this->m_client_socket,
-               wrq_packet.data_ptr.get(),
-               static_cast<int>(wrq_packet.size),
-               0,
-               (SOCKADDR*)& this->m_server_info,
-               this->m_addr_size);
-        //send RRQ//
-
-        SOCKADDR_IN server{};
-        int len = sizeof(server);
-
-        //Get first data block//
-        int bytes = recvfrom(this->m_client_socket,
-                             this->m_incoming_buffer.get(),
-                             TFTP_INCOMING_DATA_BUFFER_LEN,
-                             0,
-                             (SOCKADDR*)&server,
-                             &len);
+        //Get first data block
+        int bytes = this->receive_data_from_server();
 
         if (this->m_incoming_buffer[1] == OP_CODE_DATA)
         {
-            std::cout << "Data packet accepted" << "\n";
-        }
-        else
-        {
-            std::cout << "Data packet is not accepted. Quitting." << "\n";
             this->close_socket_architecture();
             file.close();
-            return;
+            this->send_transmission_done_signal();
+            throw std::runtime_error("Data packet accepted");
         }
 
         file.write(&this->m_incoming_buffer[DATA_BEGIN], bytes - DATA_BEGIN);
 
-        //Get first data block//
-        packet_t ack_packet = YB::TFTP::make_ack_packet();
-
-        sendto(this->m_client_socket,
-               ack_packet.data_ptr.get(),
-               static_cast<int>(ack_packet.size),
-               0,
-               (SOCKADDR*)&server, len);
+        //send first ack packet
+        this->send_ack_packet();
 
         while (bytes >= TFTP_OUTGOING_DATA_BUFFER_LEN)
         {
             memset(this->m_incoming_buffer.get(), 0, TFTP_OUTGOING_DATA_BUFFER_LEN);
 
-            bytes = recvfrom(this->m_client_socket,
-                             this->m_incoming_buffer.get(),
-                             TFTP_INCOMING_DATA_BUFFER_LEN,
-                             0,
-                             (SOCKADDR*)&server,
-                             &len);
+            bytes = this->receive_data_from_server();
 
             file.write(&this->m_incoming_buffer[DATA_BEGIN], bytes - DATA_BEGIN);
 
-            //ack_packet.clear();
-            ack_packet = YB::TFTP::make_ack_packet();
-
-            sendto(this->m_client_socket,
-                   ack_packet.data_ptr.get(),
-                   static_cast<int>(ack_packet.size),
-                   0,
-                   (SOCKADDR*)&server,
-                   len);
+            this->send_ack_packet();
         }
 
         file.close();
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+// Private Functions
+////////////////////////////////////////////////////////////////////////////////
+
+    void TFTPClient::send_ack_packet()
+    {
+        packet_t ack_packet = TFTP::make_ack_packet();
+
+        sendto(this->m_client_socket,
+               ack_packet.data_ptr.get(),
+               ack_packet.size,
+               0,
+               reinterpret_cast<SOCKADDR*>(&this->m_peer),
+               this->m_addr_size);
+    }
+
+    void TFTPClient::send_data_packet(int number_of_bytes_from_last_read)
+    {
+        packet_t data_packet
+            = TFTP::make_data_packet(this->m_outgoing_buffer.get());
+
+        sendto(this->m_client_socket,
+               data_packet.data_ptr.get(),
+               number_of_bytes_from_last_read + DATA_BEGIN,
+               0,
+               reinterpret_cast<SOCKADDR*>(&this->m_peer),
+               this->m_addr_size);
+    }
+
+    void TFTPClient::send_rrq_packet(const std::string& file_name)
+    {
+        packet_t rrq_packet = TFTP::make_rrq_packet(file_name);
+
+        sendto(this->m_client_socket,
+               rrq_packet.data_ptr.get(),
+               rrq_packet.size,
+               0,
+               reinterpret_cast<SOCKADDR*>(&this->m_server_info),
+               this->m_addr_size);
+    }
+
+    void TFTPClient::send_wrq_packet(const std::string& file_name)
+    {
+        packet_t wrq_packet = TFTP::make_wrq_packet(file_name);
+
+        sendto(this->m_client_socket,
+               wrq_packet.data_ptr.get(),
+               wrq_packet.size,
+               0,
+               reinterpret_cast<SOCKADDR*>(&this->m_server_info),
+               this->m_addr_size);
+    }
+
+    int TFTPClient::receive_data_from_server()
+    {
+        return recvfrom(this->m_client_socket,
+                        this->m_incoming_buffer.get(),
+                        TFTP_INCOMING_DATA_BUFFER_LEN,
+                        0,
+                        reinterpret_cast<SOCKADDR*>(&this->m_peer),
+                        &this->m_addr_size);
     }
 
     void TFTPClient::close_socket_architecture() const
@@ -287,25 +257,20 @@ namespace YB
         std::cout << "Windows Socket Architecture is closed." << std::endl;
     }
 
-    void TFTPClient::send_transmission_done_signal(const SOCKADDR* peer_addr)
+    void TFTPClient::send_transmission_done_signal()
     {
+        //tell the server the transmission is done.
         sendto(this->m_client_socket,
-               nullptr,
-               sizeof(nullptr),
+               "done",
+               5,
                0,
-               peer_addr,
-               sizeof(SOCKADDR)); //tell the server the transmission is done.
-
+               reinterpret_cast<SOCKADDR*>(&this->m_peer),
+               this->m_addr_size);
     }
 
-/*******************************************************************************
- * Private Functions
- ******************************************************************************/
-
-/*******************************************************************************
- * Protected Functions
- ******************************************************************************/
-
+////////////////////////////////////////////////////////////////////////////////
+// Protected Functions
+////////////////////////////////////////////////////////////////////////////////
 
 } // YB
 
