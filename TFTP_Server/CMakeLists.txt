@@ -10,19 +10,36 @@ if (EDITOR_BUILD)
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP /O2 /GA /MD")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /O2 /GA /MD /arch:AVX2")
+	if (MSVC)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP /O2 /MD")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /O2 /MD /arch:AVX2")
+	endif ()
+
+	if (UNIX)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -march=native")
+	endif ()
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP /Od /GA /MDd")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /Od /MDd /arch:AVX2")
+	if (MSVC)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP /Od /MDd")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /Od /MDd /arch:AVX2")
+	endif ()
+
+	if (UNIX)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Og -g -Wall -ggdb")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Og -g -Wall -ggdb -march=native")
+	endif ()
 endif ()
 
 set(WORKSPACE_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(BASE_FOLDER ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_compile_definitions(_WINSOCK_DEPRECATED_NO_WARNINGS)
+if (MSVC)
+	add_compile_definitions(_WINSOCK_DEPRECATED_NO_WARNINGS)
+	set(WINSOCK_LIB Ws2_32)
+endif ()
 
 # Project Includes
 include_directories(${BASE_FOLDER}/include)
@@ -36,7 +53,6 @@ add_executable(
 
 	${BASE_FOLDER}/main.cpp
 	${BASE_FOLDER}/source/tftp_server.cpp)
-#	${WORKSPACE_FOLDER}/TFTP/source/tftp.cpp)
 
 target_link_libraries(
 	${PROJECT_NAME}
@@ -44,7 +60,7 @@ target_link_libraries(
 	PRIVATE
 
 	TFTP
-	Ws2_32)
+	${WINSOCK_LIB})
 
 install(TARGETS ${PROJECT_NAME}
 		DESTINATION ${CMAKE_INSTALL_PREFIX})

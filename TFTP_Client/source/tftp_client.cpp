@@ -1,7 +1,7 @@
 ///
 /// @file tftp_client.cpp
 /// @author Yasin BASAR
-/// @brief
+/// @brief This file contains the implementation of the TFTPClient class methods.
 /// @version 1.0.0
 /// @date 11/08/2024
 /// @copyright (c) 2024 All rights reserved.
@@ -34,6 +34,7 @@ namespace YB
           m_peer{},
           m_addr_size{sizeof(SOCKADDR_IN)}
     {
+#ifdef _WIN32
         WSADATA wsa_data;
         constexpr WORD version = MAKEWORD(2, 2);
         const int status = WSAStartup(version, &wsa_data);
@@ -46,8 +47,8 @@ namespace YB
 
             throw std::runtime_error(error_str);
         }
-
-        std::cout << "Windows Socket Architecture initialized.\n";
+#endif
+        std::cout << "Socket Architecture initialized.\n";
     }
 
     TFTPClient::~TFTPClient()
@@ -63,7 +64,7 @@ namespace YB
             this->m_client_socket == INVALID_SOCKET)
         {
             const std::string error_str = "Error at socket creation. Error code: " +
-                                          std::to_string(WSAGetLastError());
+                                          GET_LAST_ERROR();
             this->close_socket_architecture();
 
             throw std::runtime_error(error_str);
@@ -71,7 +72,12 @@ namespace YB
 
         this->m_server_info.sin_family = AF_INET;
         this->m_server_info.sin_port = htons(port);
+#ifdef _WIN32
         this->m_server_info.sin_addr.S_un.S_addr = inet_addr(server_ip);
+#endif
+#ifdef __linux__
+        this->m_server_info.sin_addr.s_addr = inet_addr(server_ip);
+#endif
         memset(this->m_server_info.sin_zero, 0, this->m_addr_size);
     }
 
@@ -154,12 +160,12 @@ namespace YB
         //Get first data block
         int bytes = this->receive_data_from_server();
 
-        if (this->m_incoming_buffer[1] == OP_CODE_DATA)
+        if (this->m_incoming_buffer[1] != OP_CODE_DATA)
         {
             this->close_socket_architecture();
             file.close();
             this->send_transmission_done_signal();
-            throw std::runtime_error("Data packet accepted");
+            throw std::runtime_error("Data transfer could not start");
         }
 
         file.write(&this->m_incoming_buffer[DATA_BEGIN], bytes - DATA_BEGIN);
@@ -248,20 +254,21 @@ namespace YB
     {
         if (this->m_client_socket != INVALID_SOCKET)
         {
-            closesocket(this->m_client_socket);
+            CLOSE_SOCKET(this->m_client_socket);
         }
 
-        WSACleanup();
+        CLEANUP();
 
-        std::cout << "Windows Socket Architecture is closed." << std::endl;
+        std::cout << "Socket Architecture is closed." << std::endl;
     }
 
     void TFTPClient::send_transmission_done_signal()
     {
+        const std::string done_str = "done";
         //tell the server the transmission is done.
         (void)sendto(this->m_client_socket,
-                     "done",
-                     5,
+                     done_str.c_str(),
+                     done_str.length(),
                      0,
                      reinterpret_cast<SOCKADDR*>(&this->m_peer),
                      this->m_addr_size);

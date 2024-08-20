@@ -15,7 +15,37 @@
 // Project Includes
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <WinSock2.h>
+#ifdef _WIN32
+#include <WinSock2.h> /*Windows socket architecture*/
+
+typedef int socklen_t;
+
+#define GET_LAST_ERROR() std::to_string(WSAGetLastError())
+#define CLEANUP() WSACleanup();
+#endif
+
+#ifdef __linux__
+#include <sys/socket.h> /*Linux socket architecture*/
+#include <netinet/in.h> /*Internet socket structures*/
+#include <arpa/inet.h> /*Contains inet_ functions*/
+#include <unistd.h> /*Contains close() function for linux file describers*/
+
+#include <algorithm> /*Contains std::replace()*/
+#include <cstring> /*Contains memset()*/
+
+typedef int SOCKET;
+typedef sockaddr SOCKADDR;
+typedef sockaddr_in SOCKADDR_IN;
+typedef sockaddr_storage SOCKADDR_STORAGE_LH;
+
+#define SOCKET_ERROR (-1)
+#define INVALID_SOCKET 0
+
+#define GET_LAST_ERROR() std::string(strerror(errno))
+#define CLOSE_SOCKET(s) close(s)
+#define CLEANUP()
+#endif
+
 #include <string>
 #include <memory>
 
@@ -100,7 +130,7 @@ namespace YB
         SOCKADDR_IN m_server_info; ///< Server socket address information.
         SOCKADDR_IN m_peer; ///< Peer socket address information.
 
-        int m_addr_size; ///< Size of the socket address structure.
+        socklen_t m_addr_size; ///< Size of the socket address structure.
 
     ////////////////////////////////////////////////////////////////////////////
     // Protected Members

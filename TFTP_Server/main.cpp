@@ -18,7 +18,7 @@ int main()
     server->bind_socket("127.0.0.1", 1234);
 
     // Server always awake with its file transfer directory
-    server->wait_for_a_request(R"(server\file_transfer\directory)");
+    server->wait_for_a_request(R"(\home\kp\ABC)");
 
     return 0;
 }
