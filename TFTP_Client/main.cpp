@@ -14,7 +14,7 @@ int main()
 {
     const std::unique_ptr<YB::TFTPClient> client{new YB::TFTPClient()};
 
-    client->create_socket();
+    client->create_socket("127.0.0.1", 1234);
 
     const std::string file_name = "deneme.txt";
     const std::string directory = R"(D:\ABC\aaa\)";

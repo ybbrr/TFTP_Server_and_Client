@@ -55,7 +55,7 @@ namespace YB
         void create_socket();
 
         /// @brief Binds the socket to a specific IP address and port.
-        void bind_socket();
+        void bind_socket(const char* server_ip, int port);
 
         /// @brief Waits for a TFTP request (RRQ or WRQ) and handles the file transfer.
         /// @param save_directory The directory where received files will be saved.

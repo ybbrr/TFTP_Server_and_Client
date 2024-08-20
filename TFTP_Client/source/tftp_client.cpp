@@ -55,7 +55,7 @@ namespace YB
         this->close_socket_architecture();
     }
 
-    void TFTPClient::create_socket()
+    void TFTPClient::create_socket(const char* server_ip, int port)
     {
         this->m_client_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 
@@ -70,8 +70,8 @@ namespace YB
         }
 
         this->m_server_info.sin_family = AF_INET;
-        this->m_server_info.sin_port = htons(69);
-        this->m_server_info.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+        this->m_server_info.sin_port = htons(port);
+        this->m_server_info.sin_addr.S_un.S_addr = inet_addr(server_ip);
         memset(this->m_server_info.sin_zero, 0, this->m_addr_size);
     }
 

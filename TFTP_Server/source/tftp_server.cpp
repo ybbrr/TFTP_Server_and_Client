@@ -70,11 +70,11 @@ namespace YB
         }
     }
 
-    void TFTPServer::bind_socket()
+    void TFTPServer::bind_socket(const char* server_ip, int port)
     {
         this->m_server_info.sin_family = AF_INET;
-        this->m_server_info.sin_port = htons(69);
-        this->m_server_info.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+        this->m_server_info.sin_port = htons(port);
+        this->m_server_info.sin_addr.S_un.S_addr = inet_addr(server_ip);
         std::memset(this->m_server_info.sin_zero, 0, sizeof(this->m_server_info.sin_zero));
 
         const int status = bind(this->m_server_socket,

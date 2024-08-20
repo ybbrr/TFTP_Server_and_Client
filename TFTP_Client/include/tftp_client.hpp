@@ -53,7 +53,7 @@ namespace YB
         ~TFTPClient();
 
         /// @brief Creates a socket for TFTP communication.
-        void create_socket();
+        void create_socket(const char* server_ip, int port);
 
         /// @brief Sends a file to the TFTP server.
         /// @param file_path The path to the file to be sent.
