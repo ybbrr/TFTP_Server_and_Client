@@ -1,6 +1,7 @@
 # TFTP_Server_and_Client
 
 Fully functional, high performance TFTP Server and Client applications.
+It is Windows and Linux compatible cross-platform project.
 
 ## How to Compile
 
