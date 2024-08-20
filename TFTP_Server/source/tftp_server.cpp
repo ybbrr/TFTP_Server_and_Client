@@ -1,7 +1,7 @@
 ///
 /// @file tftp_server.cpp
 /// @author Yasin BASAR
-/// @brief
+/// @brief This file contains the implementation of the TFTPServer class methods.
 /// @version 1.0.0
 /// @date 11/08/2024
 /// @copyright (c) 2024 All rights reserved.
@@ -34,6 +34,7 @@ namespace YB
           m_server_storage{},
           m_addr_storage_size{sizeof(SOCKADDR_STORAGE_LH)}
     {
+#ifdef _WIN32
         WSADATA wsa_data{};
 
         constexpr WORD version = MAKEWORD(2, 2);
@@ -47,8 +48,8 @@ namespace YB
 
             throw std::runtime_error(error_str);
         }
-
-        std::cout << "Windows Socket Architecture initialized.\n";
+#endif
+        std::cout << "Socket Architecture initialized.\n";
     }
 
     TFTPServer::~TFTPServer()
@@ -63,18 +64,23 @@ namespace YB
         if (this->m_server_socket == SOCKET_ERROR)
         {
             const std::string error_str = "Error at socket creation. Error code: " +
-                                          std::to_string(WSAGetLastError());
+                                          GET_LAST_ERROR();
             this->close_socket_architecture();
 
             throw std::runtime_error(error_str);
         }
     }
 
-    void TFTPServer::bind_socket()
+    void TFTPServer::bind_socket(const char* server_ip, int port)
     {
         this->m_server_info.sin_family = AF_INET;
-        this->m_server_info.sin_port = htons(69);
-        this->m_server_info.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+        this->m_server_info.sin_port = htons(port);
+#ifdef _WIN32
+        this->m_server_info.sin_addr.S_un.S_addr = inet_addr(server_ip);
+#endif
+#ifdef __linux__
+        this->m_server_info.sin_addr.s_addr = inet_addr(server_ip);
+#endif
         std::memset(this->m_server_info.sin_zero, 0, sizeof(this->m_server_info.sin_zero));
 
         const int status = bind(this->m_server_socket,
@@ -84,7 +90,7 @@ namespace YB
         if (status == SOCKET_ERROR)
         {
             const std::string error_str = "Error at binding. Error code: " +
-                                          std::to_string(WSAGetLastError());
+                                          GET_LAST_ERROR();
 
             this->close_socket_architecture();
 
@@ -102,13 +108,9 @@ namespace YB
             TFTP::reset_ack_data_block_num();
             TFTP::reset_data_block_num();
 
-            std::string file_path(&this->m_incoming_buffer[2]);
-            std::replace(file_path.begin(), file_path.end(), '\\', '/');
-            file_path = save_directory + "/" + file_path;
 
-            const std::filesystem::path path(file_path);
-            std::filesystem::path canonical_path = std::filesystem::weakly_canonical(path);
-            file_path = canonical_path.make_preferred().string();
+            const std::string file_name(&this->m_incoming_buffer[2]);
+            const std::string file_path = this->preferred_file_path(save_directory, file_name);
 
             std::ofstream out_file(file_path, std::ios::binary);
 
@@ -145,13 +147,8 @@ namespace YB
             TFTP::reset_ack_data_block_num();
             TFTP::reset_data_block_num();
 
-            std::string file_path(&this->m_incoming_buffer[2]);
-            std::replace(file_path.begin(), file_path.end(), '\\', '/');
-            file_path = save_directory + "/" + file_path;
-
-            const std::filesystem::path path(file_path);
-            std::filesystem::path canonical_path = std::filesystem::weakly_canonical(path);
-            file_path = canonical_path.make_preferred().string();
+            const std::string file_name(&this->m_incoming_buffer[2]);
+            const std::string file_path = this->preferred_file_path(save_directory, file_name);
 
             std::ifstream in_file(file_path, std::ios::binary);
 
@@ -238,12 +235,35 @@ namespace YB
     {
         if (this->m_server_socket != INVALID_SOCKET)
         {
-            closesocket(this->m_server_socket);
+            CLOSE_SOCKET(this->m_server_socket);
         }
 
-        WSACleanup();
+        CLEANUP();
 
-        std::cout << "Windows Socket Architecture is closed." << std::endl;
+        std::cout << "Socket Architecture is closed." << std::endl;
+    }
+
+    std::string TFTPServer::preferred_file_path(const std::string& save_directory,
+                                                const std::string& file_name) const
+    {
+        std::string file_path{};
+
+        if (save_directory[save_directory.length() - 1] == '/' ||
+            save_directory[save_directory.length() - 1] == '\\')
+        {
+            file_path = save_directory + file_name;
+        }
+        else
+        {
+            file_path = save_directory + '/' + file_name;
+        }
+
+        std::replace(file_path.begin(), file_path.end(), '\\', '/');
+
+        const std::filesystem::path path(file_path);
+        std::filesystem::path canonical_path = std::filesystem::weakly_canonical(path);
+
+        return canonical_path.make_preferred().string();
     }
 
 ////////////////////////////////////////////////////////////////////////////////

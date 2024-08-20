@@ -1,44 +1,43 @@
-/**
- * @file tftp.cpp
- * @author Yasin BASAR
- * @brief
- * @version 1.0.0
- * @date 11/08/2024
- * @copyright (c) 2024 All rights reserved.
- */
+///
+/// @file tftp.cpp
+/// @author Yasin BASAR
+/// @brief Implementation file for TFTP operations including packet creation and block number management.
+/// @version 1.0.0
+/// @date 11/08/2024
+/// @copyright (c) 2024 All rights reserved.
+///
 
+////////////////////////////////////////////////////////////////////////////////
+// Project Includes
+////////////////////////////////////////////////////////////////////////////////
 
-/*******************************************************************************
- * Includes 
- ******************************************************************************/
+#ifdef WIN32
+#include <WinSock2.h>
+#endif
+
+#ifdef __linux__
+#include <arpa/inet.h>
+#include <cstring>
+#endif
 
 #include "tftp.hpp"
-#include <WinSock2.h>
 #include <string>
 
-/*******************************************************************************
- * Third Party Libraries 
- ******************************************************************************/
-
+////////////////////////////////////////////////////////////////////////////////
+// Third Party Includes
+////////////////////////////////////////////////////////////////////////////////
 
 namespace YB
 {
-    typedef struct TFTP_header_s
-    {
-        uint16_t op_code;
-    } TFTP_header_t;
-
-    typedef struct TFTP_data_block_s
-    {
-        uint16_t data_block;
-    } TFTP_data_block_t;
-
+    /// @brief Initializes the static data block number.
     int TFTP::m_data_block_num = 1U;
+
+    /// @brief Initializes the static acknowledgment block number.
     int TFTP::m_ack_block_num = 1U;
 
-/*******************************************************************************
- * Public Functions
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Public Functions
+////////////////////////////////////////////////////////////////////////////////
 
     packet_t TFTP::make_rrq_packet(const std::string& file_name)
     {
@@ -107,7 +106,7 @@ namespace YB
         ack_packet.size = data_len;
         ack_packet.data_block_number = m_ack_block_num++;
         memcpy(ack_packet.data_ptr.get(), &header, header_size);
-        memcpy(ack_packet.data_ptr.get() + header_size, &block, block_size + 1);
+        memcpy(ack_packet.data_ptr.get() + header_size, &block, block_size);
         return ack_packet;
     }
 
@@ -142,13 +141,13 @@ namespace YB
         m_data_block_num = 1U;
     }
 
-/*******************************************************************************
- * Private Functions
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Private Functions
+////////////////////////////////////////////////////////////////////////////////
 
-/*******************************************************************************
- * Protected Functions
- ******************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+// Protected Functions
+////////////////////////////////////////////////////////////////////////////////
 
 } // YB
 

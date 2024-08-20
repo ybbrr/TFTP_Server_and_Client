@@ -15,10 +15,11 @@ int main()
     const std::unique_ptr<YB::TFTPServer> server{new YB::TFTPServer()};
 
     server->create_socket();
-    server->bind_socket();
+    server->bind_socket("127.0.0.1", 1234);
 
     // Server always awake with its file transfer directory
-    server->wait_for_a_request(R"(D:\ABC)");
+    const std::string root_dir = R"(the\directory\for\you\to\send\the\file\or\save\the\file\)";
+    server->wait_for_a_request(root_dir);
 
     return 0;
 }

@@ -2,8 +2,10 @@
 <project version="4">
   <component name="CMakeSharedSettings">
     <configurations>
-      <configuration PROFILE_NAME="Release" ENABLED="true" GENERATION_DIR="__build_dir__/Release" CONFIG_NAME="Release" TOOLCHAIN_NAME="Visual Studio" GENERATION_OPTIONS="-G Ninja -D CMAKE_RUNTIME_OUTPUT_DIRECTORY=../../../__build_out__ -D EDITOR_BUILD=ON" />
-      <configuration PROFILE_NAME="Debug" ENABLED="true" GENERATION_DIR="__build_dir__/Debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="Visual Studio" GENERATION_OPTIONS="-G Ninja -D CMAKE_RUNTIME_OUTPUT_DIRECTORY=../../../__build_out__ -D EDITOR_BUILD=ON" />
+      <configuration PROFILE_NAME="Release-MSVC" ENABLED="true" GENERATION_DIR="__build_dir__/Release" CONFIG_NAME="Release" TOOLCHAIN_NAME="Visual Studio" GENERATION_OPTIONS="-G Ninja -D CMAKE_RUNTIME_OUTPUT_DIRECTORY=../../../__build_out__ -D EDITOR_BUILD=ON" />
+      <configuration PROFILE_NAME="Debug-MSVC" ENABLED="true" GENERATION_DIR="__build_dir__/Debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="Visual Studio" GENERATION_OPTIONS="-G Ninja -D CMAKE_RUNTIME_OUTPUT_DIRECTORY=../../../__build_out__ -D EDITOR_BUILD=ON" />
+      <configuration PROFILE_NAME="Release-GCC" ENABLED="true" GENERATION_DIR="__build_dir__/Release" CONFIG_NAME="Release" GENERATION_OPTIONS="-G Ninja -D CMAKE_RUNTIME_OUTPUT_DIRECTORY=../../../__build_out__ -D EDITOR_BUILD=ON" />
+      <configuration PROFILE_NAME="Debug-GCC" ENABLED="true" GENERATION_DIR="__build_dir__/Debug" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G Ninja -D CMAKE_RUNTIME_OUTPUT_DIRECTORY=../../../__build_out__ -D EDITOR_BUILD=ON" />
     </configurations>
   </component>
 </project>
