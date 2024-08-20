@@ -7,7 +7,6 @@
 /// @copyright (c) 2024 All rights reserved.
 ///
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Project Includes
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,12 +189,12 @@ namespace YB
     {
         packet_t ack_packet = TFTP::make_ack_packet();
 
-        sendto(this->m_client_socket,
-               ack_packet.data_ptr.get(),
-               ack_packet.size,
-               0,
-               reinterpret_cast<SOCKADDR*>(&this->m_peer),
-               this->m_addr_size);
+        (void)sendto(this->m_client_socket,
+                     ack_packet.data_ptr.get(),
+                     ack_packet.size,
+                     0,
+                     reinterpret_cast<SOCKADDR*>(&this->m_peer),
+                     this->m_addr_size);
     }
 
     void TFTPClient::send_data_packet(int number_of_bytes_from_last_read)
@@ -203,36 +202,36 @@ namespace YB
         packet_t data_packet
             = TFTP::make_data_packet(this->m_outgoing_buffer.get());
 
-        sendto(this->m_client_socket,
-               data_packet.data_ptr.get(),
-               number_of_bytes_from_last_read + DATA_BEGIN,
-               0,
-               reinterpret_cast<SOCKADDR*>(&this->m_peer),
-               this->m_addr_size);
+        (void)sendto(this->m_client_socket,
+                     data_packet.data_ptr.get(),
+                     number_of_bytes_from_last_read + DATA_BEGIN,
+                     0,
+                     reinterpret_cast<SOCKADDR*>(&this->m_peer),
+                     this->m_addr_size);
     }
 
     void TFTPClient::send_rrq_packet(const std::string& file_name)
     {
         packet_t rrq_packet = TFTP::make_rrq_packet(file_name);
 
-        sendto(this->m_client_socket,
-               rrq_packet.data_ptr.get(),
-               rrq_packet.size,
-               0,
-               reinterpret_cast<SOCKADDR*>(&this->m_server_info),
-               this->m_addr_size);
+        (void)sendto(this->m_client_socket,
+                     rrq_packet.data_ptr.get(),
+                     rrq_packet.size,
+                     0,
+                     reinterpret_cast<SOCKADDR*>(&this->m_server_info),
+                     this->m_addr_size);
     }
 
     void TFTPClient::send_wrq_packet(const std::string& file_name)
     {
         packet_t wrq_packet = TFTP::make_wrq_packet(file_name);
 
-        sendto(this->m_client_socket,
-               wrq_packet.data_ptr.get(),
-               wrq_packet.size,
-               0,
-               reinterpret_cast<SOCKADDR*>(&this->m_server_info),
-               this->m_addr_size);
+        (void)sendto(this->m_client_socket,
+                     wrq_packet.data_ptr.get(),
+                     wrq_packet.size,
+                     0,
+                     reinterpret_cast<SOCKADDR*>(&this->m_server_info),
+                     this->m_addr_size);
     }
 
     int TFTPClient::receive_data_from_server()
@@ -260,12 +259,12 @@ namespace YB
     void TFTPClient::send_transmission_done_signal()
     {
         //tell the server the transmission is done.
-        sendto(this->m_client_socket,
-               "done",
-               5,
-               0,
-               reinterpret_cast<SOCKADDR*>(&this->m_peer),
-               this->m_addr_size);
+        (void)sendto(this->m_client_socket,
+                     "done",
+                     5,
+                     0,
+                     reinterpret_cast<SOCKADDR*>(&this->m_peer),
+                     this->m_addr_size);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
