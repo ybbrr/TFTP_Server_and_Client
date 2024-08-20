@@ -27,6 +27,18 @@ namespace YB
     /// @brief Provides functions to create TFTP packets and manage block numbers.
     class TFTP
     {
+        /// @brief TFTP Header structure.
+        typedef struct TFTP_header_s
+        {
+            uint16_t op_code; ///< Operation code.
+        } TFTP_header_t;
+
+        /// @brief TFTP Data Block structure.
+        typedef struct TFTP_data_block_s
+        {
+            uint16_t data_block; ///< Data block number.
+        } TFTP_data_block_t;
+
     public:
     ////////////////////////////////////////////////////////////////////////////
     // Special Members

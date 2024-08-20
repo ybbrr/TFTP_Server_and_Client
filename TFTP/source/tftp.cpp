@@ -29,18 +29,6 @@
 
 namespace YB
 {
-    /// @brief TFTP Header structure.
-    typedef struct TFTP_header_s
-    {
-        uint16_t op_code; ///< Operation code.
-    } TFTP_header_t;
-
-    /// @brief TFTP Data Block structure.
-    typedef struct TFTP_data_block_s
-    {
-        uint16_t data_block; ///< Data block number.
-    } TFTP_data_block_t;
-
     /// @brief Initializes the static data block number.
     int TFTP::m_data_block_num = 1U;
 
@@ -118,7 +106,7 @@ namespace YB
         ack_packet.size = data_len;
         ack_packet.data_block_number = m_ack_block_num++;
         memcpy(ack_packet.data_ptr.get(), &header, header_size);
-        memcpy(ack_packet.data_ptr.get() + header_size, &block, block_size + 1);
+        memcpy(ack_packet.data_ptr.get() + header_size, &block, block_size);
         return ack_packet;
     }
 
