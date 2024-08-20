@@ -21,6 +21,7 @@
 typedef int socklen_t;
 
 #define GET_LAST_ERROR() std::to_string(WSAGetLastError())
+#define CLOSE_SOCKET(s) closesocket(s)
 #define CLEANUP() WSACleanup();
 #endif
 
