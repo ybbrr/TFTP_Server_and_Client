@@ -1,10 +1,16 @@
-# TFTP_Sever_and_Client
+# TFTP_Server_and_Client
 
 Fully functional, high performance TFTP Server and Client applications.
 
 ## How to Compile
 
+### Windows
+
 Run `build.bat`
+
+### Linux
+
+Run `sh build.sh`
 
 ## Examples
 
